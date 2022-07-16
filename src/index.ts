@@ -8,6 +8,7 @@ import {
   Operator,
   DataFilterLogic,
   DataFilterNodeOrGroup,
+  ResolvedToSqlOptions,
 } from './types'
 
 const LOGIC_TO_STRING = {
@@ -23,6 +24,13 @@ const OP_TO_STRING = {
   [Operator.GREATER_THAN_OR_EQUAL]: '>',
   [Operator.LESS_THAN_OR_EQUAL]: '>',
   [Operator.LIKE]: 'like',
+}
+
+const createBlankString = (length: number): string => {
+  let s = ''
+  for (let i = 0; i < length; i += 1)
+    s += ' '
+  return s
 }
 
 const quoteValue = (v: string | number | boolean): string => `'${v}'`
@@ -76,8 +84,8 @@ const createNodeOpVal = (node: DataFilterNode): string => {
 /**
  * Converts the data filter node to sql, i.e. "user.id between 1 and 5".
  */
-const nodeToSql = (node: DataFilterNode, fieldPrefix?: string, options?: ToSqlOptions): string => {
-  const transformerResult = options?.transformer?.(node, fieldPrefix)
+const nodeToSql = (node: DataFilterNode, options: ResolvedToSqlOptions, fieldPrefix?: string): string => {
+  const transformerResult = options.transformer?.(node, fieldPrefix)
   const left = transformerResult?.left ?? `${fieldPrefix ?? ''}${node.field}`
 
   const opVal = createNodeOpVal(node)
@@ -85,20 +93,31 @@ const nodeToSql = (node: DataFilterNode, fieldPrefix?: string, options?: ToSqlOp
   return `${left} ${opVal}`
 }
 
-const groupToSql = (nodeGroup: DataFilterNodeGroup, options?: ToSqlOptions): string => (
+const createIndentationString = (depth: number, indentation: number) => (
+  indentation === 0 ? '' : '\n'.concat(createBlankString(depth * indentation))
+)
+
+const createLogicString = (logic: DataFilterLogic, depth: number, indentation: number) => (
+  `${indentation === 0 ? ' ' : createIndentationString(depth, indentation)}${LOGIC_TO_STRING[logic]} `
+)
+
+/**
+ * Converts the data filter node group to sql.
+ */
+const groupToSql = (nodeGroup: DataFilterNodeGroup, options: ResolvedToSqlOptions, depth: number): string => (
   nodeGroup != null
-    ? `(${nodeGroup.nodes
+    ? `(${createIndentationString(depth, options.indentation)}${nodeGroup.nodes
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      .map(n => nodeOrGroupToSql(n, nodeGroup.fieldPrefix, options))
-      .join(` ${LOGIC_TO_STRING[nodeGroup.logic]} `)})`
+      .map(n => nodeOrGroupToSql(n, options, depth, nodeGroup.fieldPrefix))
+      .join(createLogicString(nodeGroup.logic, depth, options.indentation))}${createIndentationString(depth - 1, options.indentation)})`
     : null
 )
 
-const nodeOrGroupToSql = (nodeOrGroup: DataFilterNodeOrGroup, fieldPrefix?: string, options?: ToSqlOptions): string => (
+const nodeOrGroupToSql = (nodeOrGroup: DataFilterNodeOrGroup, options: ResolvedToSqlOptions, depth: number, fieldPrefix?: string): string => (
   nodeOrGroup != null
     ? isNodeGroup(nodeOrGroup)
-      ? groupToSql(nodeOrGroup, options)
-      : nodeToSql(nodeOrGroup, fieldPrefix, options)
+      ? groupToSql(nodeOrGroup, options, depth + 1)
+      : nodeToSql(nodeOrGroup, options, fieldPrefix)
     : null
 )
 
@@ -114,6 +133,11 @@ const union = (...nodeOrGroups: DataFilterNodeOrGroup[]) => join(DataFilterLogic
 
 const intersection = (...nodeOrGroups: DataFilterNodeOrGroup[]) => join(DataFilterLogic.AND, ...nodeOrGroups)
 
+const resolveToSqlOptions = (options?: ToSqlOptions): ResolvedToSqlOptions => ({
+  transformer: options?.transformer,
+  indentation: options?.indentation ?? 0,
+})
+
 export const createDataFilter = (options: DataFilterOptions): DataFilter => {
   let component: DataFilter
 
@@ -121,7 +145,14 @@ export const createDataFilter = (options: DataFilterOptions): DataFilter => {
     value: options?.initialFilter ?? null,
     addAnd: newNode => component.value = intersection(component.value, newNode),
     addOr: newNode => component.value = union(component.value, newNode),
-    toSql: _options => nodeOrGroupToSql(component.value, isNodeGroup(component.value) ? component.value.fieldPrefix : null, _options),
+    toSql: _options => (
+      nodeOrGroupToSql(
+        component.value,
+        resolveToSqlOptions(_options),
+        0,
+        isNodeGroup(component.value) ? component.value.fieldPrefix : null,
+      )
+    ),
     toJson: () => JSON.stringify(component.value),
     updateFilter: newFilter => component.value = newFilter,
   }

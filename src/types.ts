@@ -94,6 +94,11 @@ export type ToSqlOptions = {
    * Optional transformer for a node.
    */
   transformer?: (node: DataFilterNode, fieldPrefix?: string) => NodeTransformResult
+  indentation?: number
+}
+
+export type ResolvedToSqlOptions = ToSqlOptions & {
+  indentation: number
 }
 
 /**
