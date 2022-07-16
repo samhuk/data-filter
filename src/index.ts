@@ -102,19 +102,25 @@ const nodeOrGroupToSql = (nodeOrGroup: DataFilterNodeOrGroup, fieldPrefix?: stri
     : null
 )
 
+const join = (
+  logic: DataFilterLogic,
+  ...nodeOrGroups: DataFilterNodeOrGroup[]
+) => ({
+  logic,
+  nodes: nodeOrGroups.filter(v => v != null),
+})
+
+const union = (...nodeOrGroups: DataFilterNodeOrGroup[]) => join(DataFilterLogic.OR, ...nodeOrGroups)
+
+const intersection = (...nodeOrGroups: DataFilterNodeOrGroup[]) => join(DataFilterLogic.AND, ...nodeOrGroups)
+
 export const createDataFilter = (options: DataFilterOptions): DataFilter => {
   let component: DataFilter
 
   return component = {
     value: options?.initialFilter ?? null,
-    addAnd: newNode => component.value = {
-      logic: DataFilterLogic.AND,
-      nodes: [component.value, newNode],
-    },
-    addOr: newNode => component.value = {
-      logic: DataFilterLogic.OR,
-      nodes: [component.value, newNode],
-    },
+    addAnd: newNode => component.value = intersection(component.value, newNode),
+    addOr: newNode => component.value = union(component.value, newNode),
     toSql: _options => nodeOrGroupToSql(component.value, isNodeGroup(component.value) ? component.value.fieldPrefix : null, _options),
     toJson: () => JSON.stringify(component.value),
     updateFilter: newFilter => component.value = newFilter,
