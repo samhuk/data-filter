@@ -92,8 +92,15 @@ export type NodeTransformResult = { left?: string } | null
 export type ToSqlOptions = {
   /**
    * Optional transformer for a node.
+   *
+   * Default: `undefined` (no transformer provided)
    */
   transformer?: (node: DataFilterNode, fieldPrefix?: string) => NodeTransformResult
+  /**
+   * Optional indentation to apply to the output sql.
+   *
+   * Default: `0` (all inline)
+   */
   indentation?: number
 }
 
