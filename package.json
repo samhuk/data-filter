@@ -1,7 +1,7 @@
 {
-  "name": "my-component",
+  "name": "@samhuk/data-filter",
   "version": "1.0.0",
-  "description": "my-component description",
+  "description": "A Javascript data filter package with PostgreSQL support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -16,7 +16,7 @@
 
     "lint": "eslint -c .eslintrc.json ./src --ext .ts,.tsx",
     "lint-errors-only": "eslint -c .eslintrc.json ./src --ext .ts,.tsx --quiet",
-   
+
     "build-ts": "tsc --project ./src/tsconfig.json",
 
     "check": "npm rum lint-errors-only && npm run build-ts && npm run unit-tests",
@@ -24,7 +24,11 @@
     "start": "tsc --project ./src/tsconfig.json --watch"
   },
   "author": "",
+  "repository": "https://github.com/samhuk/data-filter",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": { },
   "devDependencies": {
     "rimraf": "^3.0.2",
