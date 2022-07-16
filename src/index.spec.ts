@@ -34,7 +34,7 @@ describe('createDataFilter', () => {
         op: Operator.BETWEEN,
         val: [1, 5],
       }
-      const dataFilter = fn({ initialFilter: filter1 })
+      const dataFilter = fn(filter1)
       dataFilter.addAnd(filter2)
 
       expect(dataFilter).toBeDefined() // Dummy assertion
@@ -49,7 +49,7 @@ describe('createDataFilter', () => {
     })
 
     test('complex filter', () => {
-      const dataFilter = fn({ initialFilter: COMPLEX_FILTER })
+      const dataFilter = fn(COMPLEX_FILTER)
 
       const result = dataFilter.toSql()
       // eslint-disable-next-line quotes
@@ -57,7 +57,7 @@ describe('createDataFilter', () => {
     })
 
     test('indentation', () => {
-      const dataFilter = fn({ initialFilter: COMPLEX_FILTER })
+      const dataFilter = fn(COMPLEX_FILTER)
 
       const result = dataFilter.toSql({ indentation: 2 })
       expect(result).toBe(`(
@@ -72,7 +72,7 @@ describe('createDataFilter', () => {
   })
 
   test('addOr', () => {
-    const dataFilter = fn({ initialFilter: { field: 'foo', op: Operator.EQUALS, val: 'a' } })
+    const dataFilter = fn({ field: 'foo', op: Operator.EQUALS, val: 'a' })
 
     dataFilter.addOr({ field: 'bar', op: Operator.NOT_EQUALS, val: 'b' })
 
@@ -86,7 +86,7 @@ describe('createDataFilter', () => {
   })
 
   test('addAnd', () => {
-    const dataFilter = fn({ initialFilter: { field: 'foo', op: Operator.EQUALS, val: 'a' } })
+    const dataFilter = fn({ field: 'foo', op: Operator.EQUALS, val: 'a' })
 
     dataFilter.addAnd({ field: 'bar', op: Operator.NOT_EQUALS, val: 'b' })
 
