@@ -19,6 +19,28 @@ const COMPLEX_FILTER: DataFilterNodeOrGroup = {
 describe('createDataFilter', () => {
   const fn = createDataFilter
 
+  describe('field types', () => {
+    test('test 1', () => {
+      type FieldNames = 'id'|'uuid'|'name'|'email'|'dateDeleted'
+      const filter1: DataFilterNodeOrGroup<FieldNames> = {
+        field: 'id',
+        op: Operator.BETWEEN,
+        val: [1, 5],
+      }
+      const filter2: DataFilterNodeOrGroup<FieldNames> = {
+        // @ts-expect-error
+        field: 'notAField',
+        // @ts-expect-error
+        op: Operator.BETWEEN,
+        val: [1, 5],
+      }
+      const dataFilter = fn({ initialFilter: filter1 })
+      dataFilter.addAnd(filter2)
+
+      expect(dataFilter).toBeDefined() // Dummy assertion
+    })
+  })
+
   describe('toSql', () => {
     test('unhappy paths', () => {
       const dataFilter = fn(null)

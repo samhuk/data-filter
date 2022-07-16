@@ -138,7 +138,9 @@ const resolveToSqlOptions = (options?: ToSqlOptions): ResolvedToSqlOptions => ({
   indentation: options?.indentation ?? 0,
 })
 
-export const createDataFilter = (options: DataFilterOptions): DataFilter => {
+export const createDataFilter = <TFieldNames extends string>(
+  options: DataFilterOptions<TFieldNames>,
+): DataFilter<TFieldNames> => {
   let component: DataFilter
 
   return component = {
