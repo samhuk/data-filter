@@ -1,15 +1,5 @@
 import { TypeDependantBaseIntersection } from './common/types'
 
-/**
- * Options for the creation of a DataFilter
- */
-export type DataFilterOptions<TFieldNames extends string = string> = {
-  /**
-   * The initial filter value for the DataFilter.
-   */
-  initialFilter: DataFilterNodeOrGroup<TFieldNames>
-}
-
 export enum DataFilterLogic {
   AND = 'and',
   OR = 'or'
@@ -78,13 +68,23 @@ export type DataFilterNodeGroup<TFieldNames extends string = string> = {
    * Prefix to prepend each `field` with of the node of this node group.
    */
   fieldPrefix?: string
+  /**
+   * The child nodes of this node group.
+   */
   nodes: DataFilterNodeOrGroup<TFieldNames>[]
 }
 
 export type DataFilterNodeOrGroup<TFieldNames extends string = string> =
   DataFilterNodeGroup<TFieldNames> | DataFilterNode<Operator, TFieldNames>
 
-export type NodeTransformResult = { left?: string } | null
+export type NodeTransformResult = {
+  /**
+   * Optional transformed LHS of a SQL equality expression. This is usually used to
+   * transform the field of each filter node, i.e. change each field name from
+   * camel case to snake case, etc.
+   */
+  left?: string
+} | null
 
 /**
  * Options for converting the filter value to SQL.

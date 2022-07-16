@@ -1,5 +1,4 @@
 import {
-  DataFilterOptions,
   DataFilter,
   DataFilterNodeGroup,
   DataFilterNode,
@@ -139,12 +138,12 @@ const resolveToSqlOptions = (options?: ToSqlOptions): ResolvedToSqlOptions => ({
 })
 
 export const createDataFilter = <TFieldNames extends string>(
-  options: DataFilterOptions<TFieldNames>,
+  initialFilter?: DataFilterNodeOrGroup<TFieldNames>,
 ): DataFilter<TFieldNames> => {
   let component: DataFilter
 
   return component = {
-    value: options?.initialFilter ?? null,
+    value: initialFilter ?? null,
     addAnd: newNode => component.value = intersection(component.value, newNode),
     addOr: newNode => component.value = union(component.value, newNode),
     toSql: _options => (
