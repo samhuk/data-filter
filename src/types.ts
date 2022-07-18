@@ -56,10 +56,22 @@ export type DataFilterNode<
   TOperator extends Operator = Operator,
   TFieldNames extends string = string,
 > = {
+  /**
+   * The LHS of the SQL expression for this node. E.g. the "user.id" in "user.id = 1".
+   */
   field: TFieldNames
+  /**
+   * Optional forced data-type for the node. If this is omitted, then a default will
+   * be infered from the Javascript type of `val`.
+   */
   dataType?: DataType
 } & TypeDependantBaseIntersection<Operator, {
-  [K in Operator]: { val: OperatorToValueType[K] }
+  [K in Operator]: {
+    /**
+     * The RHS of the SQL expression for this node. E.g. the "1" in "user.id = 1".
+     */
+    val: OperatorToValueType[K]
+  }
 }, TOperator, 'op'>
 
 export type DataFilterNodeGroup<TFieldNames extends string = string> = {

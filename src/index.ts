@@ -10,21 +10,6 @@ import {
   ResolvedToSqlOptions,
 } from './types'
 
-const LOGIC_TO_STRING = {
-  [DataFilterLogic.AND]: 'and',
-  [DataFilterLogic.OR]: 'or',
-}
-
-const OP_TO_STRING = {
-  [Operator.EQUALS]: '=',
-  [Operator.NOT_EQUALS]: '!=',
-  [Operator.LESS_THAN]: '<',
-  [Operator.GREATER_THAN]: '>',
-  [Operator.GREATER_THAN_OR_EQUAL]: '>',
-  [Operator.LESS_THAN_OR_EQUAL]: '>',
-  [Operator.LIKE]: 'like',
-}
-
 const createBlankString = (length: number): string => {
   let s = ''
   for (let i = 0; i < length; i += 1)
@@ -59,6 +44,7 @@ const inferDataType = (value: any): DataType => {
 const createNodeOpVal = (node: DataFilterNode): string => {
   const type = node.dataType ?? inferDataType(node.val)
 
+  // Special handling for null value, which means that we must do "is null" or "is not null".
   if (node.val === null)
     return node.op === Operator.EQUALS ? 'is null' : 'is not null'
 
@@ -66,18 +52,22 @@ const createNodeOpVal = (node: DataFilterNode): string => {
 
   if (node.op === Operator.BETWEEN) {
     return shouldQuoteValue
-      ? `between ${quoteValue(node.val[0])} and ${quoteValue(node.val[1])}`
-      : `between ${node.val[0]} and ${node.val[1]}`
+      // I.e. "between 'a' and 'b'", "between '01-01-2020' and '02-01-2020'"
+      ? `${node.op} ${quoteValue(node.val[0])} and ${quoteValue(node.val[1])}`
+      // I.e. "between 1 and 5"
+      : `${node.op} ${node.val[0]} and ${node.val[1]}`
   }
   if (node.op === Operator.IN) {
     return shouldQuoteValue
-      ? `in (${node.val.map(quoteValue).join(', ')})`
-      : `in (${node.val.join(', ')})`
+      // I.e. "in ('a', 'b', 'c')"
+      ? `${node.op} (${node.val.map(quoteValue).join(', ')})`
+      // I.e. "in (1, 2, 3)"
+      : `${node.op} (${node.val.join(', ')})`
   }
 
+  // I.e. ? "'a'", "'01-01-2020'" : "1"
   const val = shouldQuoteValue ? quoteValue(node.val) : node.val.toString()
-  const op = OP_TO_STRING[node.op]
-  return `${op} ${val}`
+  return `${node.op} ${val}`
 }
 
 /**
@@ -97,7 +87,7 @@ const createIndentationString = (depth: number, indentation: number) => (
 )
 
 const createLogicString = (logic: DataFilterLogic, depth: number, indentation: number) => (
-  `${indentation === 0 ? ' ' : createIndentationString(depth, indentation)}${LOGIC_TO_STRING[logic]} `
+  `${indentation === 0 ? ' ' : createIndentationString(depth, indentation)}${logic} `
 )
 
 /**
@@ -155,12 +145,10 @@ export const createDataFilter = <TFieldNames extends string>(
     value: initialFilter ?? null,
     addAnd: newNode => component.value = intersection(component.value, newNode),
     addOr: newNode => component.value = union(component.value, newNode),
-    toSql: _options => (
-      nodeOrGroupToSql(
-        component.value,
-        resolveToSqlOptions(_options),
-        getFieldPrefixOfNodeOrGroup(component.value),
-      )
+    toSql: _options => nodeOrGroupToSql(
+      component.value,
+      resolveToSqlOptions(_options),
+      getFieldPrefixOfNodeOrGroup(component.value),
     ),
     toJson: () => JSON.stringify(component.value),
     updateFilter: newFilter => component.value = newFilter,
