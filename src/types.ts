@@ -65,7 +65,7 @@ export type DataFilterNode<
 export type DataFilterNodeGroup<TFieldNames extends string = string> = {
   logic: DataFilterLogic
   /**
-   * Prefix to prepend each `field` with of the node of this node group.
+   * Prefix to prepend each `field` with of all child nodes of this node group (recursive).
    */
   fieldPrefix?: string
   /**
@@ -79,9 +79,7 @@ export type DataFilterNodeOrGroup<TFieldNames extends string = string> =
 
 export type NodeTransformResult = {
   /**
-   * Optional transformed LHS of a SQL equality expression. This is usually used to
-   * transform the field of each filter node, i.e. change each field name from
-   * camel case to snake case, etc.
+   * Optional transformed LHS of the SQL equality expression for a given node.
    */
   left?: string
 } | null
@@ -91,19 +89,27 @@ export type NodeTransformResult = {
  */
 export type ToSqlOptions = {
   /**
-   * Optional transformer for a node.
+   * Optional transformer for a node. This is useful if each node in the filter, when
+   * transformed to SQL, needs to be consistently transformed. For example, if each field
+   * name needs to be converted from one case to another (e.g. camel-case to snake-case).
    *
-   * Default: `undefined` (no transformer provided)
+   * @default undefined // no transformer provided
+   *
+   * @param node The node to be transformed.
+   * @param fieldPrefix The field prefix of the node.
    */
   transformer?: (node: DataFilterNode, fieldPrefix?: string) => NodeTransformResult
   /**
    * Optional indentation to apply to the output sql.
    *
-   * Default: `0` (all inline)
+   * @default 0 // all inline
    */
   indentation?: number
 }
 
+/**
+ * ToSqlOptions but with defaults provided.
+ */
 export type ResolvedToSqlOptions = ToSqlOptions & {
   indentation: number
 }
