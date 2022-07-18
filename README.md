@@ -12,22 +12,13 @@ import { Operator, DataFilterLogic } from '@samhuk/data-filter/types'
 
 // Single-node filter
 const df1 = createDataFilter({
-  field: 'username', op: Operator.EQUALS, val: 'bob',
+  field: 'username',
+  op: Operator.EQUALS,
+  val: 'bob',
 })
 console.log(df1.toSql()) // (username = 'bob')
 
-// Double-node filter
-const df2 = createDataFilter({
-  logic: DataFilterLogic.AND,
-  nodes: [
-    { field: 'username', op: Operator.EQUALS, val: 'bob' },
-    { field: 'date_deleted', op: Operator.NOT_EQUALS, val: 'null' },
-  ],
-})
-console.log(df2.toSql())
-// (username = 'bob' and date_deleted is not null)
-
-// Complex filters
+// Complex filter
 const df3 = createDataFilter({
   logic: DataFilterLogic.AND,
   nodes: [
@@ -50,6 +41,6 @@ console.log(df3.toSql())
 
 `npm i`
 
-To start hot reloading: `npm start`
+`npm start` - Start a hot reloading tsc build.
 
-Edit a file within `src` to observe hot-reloading.
+`npm run check` - Run linting, unit tests, and tsc build.
