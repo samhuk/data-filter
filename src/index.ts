@@ -62,20 +62,20 @@ const createNodeOpVal = (node: DataFilterNode): string => {
   if (node.val === null)
     return node.op === Operator.EQUALS ? 'is null' : 'is not null'
 
+  const shouldQuoteValue = type === DataType.STRING || type === DataType.EPOCH
+
   if (node.op === Operator.BETWEEN) {
-    return type === DataType.STRING
+    return shouldQuoteValue
       ? `between ${quoteValue(node.val[0])} and ${quoteValue(node.val[1])}`
       : `between ${node.val[0]} and ${node.val[1]}`
   }
   if (node.op === Operator.IN) {
-    return type === DataType.STRING
+    return shouldQuoteValue
       ? `in (${node.val.map(quoteValue).join(', ')})`
       : `in (${node.val.join(', ')})`
   }
 
-  const val = type === DataType.STRING
-    ? quoteValue(node.val)
-    : node.val.toString()
+  const val = shouldQuoteValue ? quoteValue(node.val) : node.val.toString()
   const op = OP_TO_STRING[node.op]
   return `${op} ${val}`
 }
@@ -107,12 +107,17 @@ const groupToSql = (nodeGroup: DataFilterNodeGroup, options: ResolvedToSqlOption
   nodeGroup != null
     ? `(${createIndentationString(depth, options.indentation)}${nodeGroup.nodes
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      .map(n => nodeOrGroupToSql(n, options, depth, nodeGroup.fieldPrefix))
+      .map(n => nodeOrGroupToSql(n, options, nodeGroup.fieldPrefix, depth))
       .join(createLogicString(nodeGroup.logic, depth, options.indentation))}${createIndentationString(depth - 1, options.indentation)})`
     : null
 )
 
-const nodeOrGroupToSql = (nodeOrGroup: DataFilterNodeOrGroup, options: ResolvedToSqlOptions, depth: number, fieldPrefix?: string): string => (
+const nodeOrGroupToSql = (
+  nodeOrGroup: DataFilterNodeOrGroup,
+  options: ResolvedToSqlOptions,
+  fieldPrefix?: string,
+  depth: number = 0,
+): string => (
   nodeOrGroup != null
     ? isNodeGroup(nodeOrGroup)
       ? groupToSql(nodeOrGroup, options, depth + 1)
@@ -137,6 +142,10 @@ const resolveToSqlOptions = (options?: ToSqlOptions): ResolvedToSqlOptions => ({
   indentation: options?.indentation ?? 0,
 })
 
+const getFieldPrefixOfNodeOrGroup = (nodeOrGroup: DataFilterNodeOrGroup): string | null => (
+  isNodeGroup(nodeOrGroup) ? nodeOrGroup.fieldPrefix : null
+)
+
 export const createDataFilter = <TFieldNames extends string>(
   initialFilter?: DataFilterNodeOrGroup<TFieldNames>,
 ): DataFilter<TFieldNames> => {
@@ -150,8 +159,7 @@ export const createDataFilter = <TFieldNames extends string>(
       nodeOrGroupToSql(
         component.value,
         resolveToSqlOptions(_options),
-        0,
-        isNodeGroup(component.value) ? component.value.fieldPrefix : null,
+        getFieldPrefixOfNodeOrGroup(component.value),
       )
     ),
     toJson: () => JSON.stringify(component.value),
