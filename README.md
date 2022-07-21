@@ -1,6 +1,6 @@
 # data-filter
 
-A Javascript data filter package.
+A package for creating data filters, with conversion to an SQL WHERE clause.
 
 ## Usage
 
