@@ -154,3 +154,11 @@ export const createDataFilter = <TFieldNames extends string>(
     updateFilter: newFilter => component.value = newFilter,
   }
 }
+
+export const joinDataFilters = <TFieldNames extends string>(
+  logic: DataFilterLogic,
+  ...dataFilters: DataFilter<TFieldNames>[]
+): DataFilter<TFieldNames> => createDataFilter<TFieldNames>({
+  logic,
+  nodes: dataFilters.map(v => v?.value).filter(v => v != null),
+})

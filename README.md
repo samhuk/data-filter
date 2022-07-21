@@ -6,23 +6,29 @@ A Javascript data filter package.
 
 `npm i @samhuk/data-filter`
 
+Simple, single-node filter
 ```typescript
 import { createDataFilter } from '@samhuk/data-filter'
 import { Operator, DataFilterLogic } from '@samhuk/data-filter/types'
 
-// Single-node filter
 const df1 = createDataFilter({
   field: 'username',
   op: Operator.EQUALS,
   val: 'bob',
 })
 console.log(df1.toSql()) // (username = 'bob')
+```
 
-// Complex filter
-const df3 = createDataFilter({
+Complex, nested filter:
+
+```typescript
+import { createDataFilter } from '@samhuk/data-filter'
+import { Operator, DataFilterLogic } from '@samhuk/data-filter/types'
+
+const df2 = createDataFilter({
   logic: DataFilterLogic.AND,
   nodes: [
-    { field: 'id', op: Operator.IN, val: [1,2,3] },
+    { field: 'id', op: Operator.IN, val: [1, 2, 3] },
     {
       logic: DataFilterLogic.OR,
       nodes: [
@@ -33,9 +39,30 @@ const df3 = createDataFilter({
     { field: 'date_deleted', op: Operator.NOT_EQUALS, val: 'null' },
   ],
 })
-console.log(df3.toSql())
-// (id in (1,2,3) and (email_v1 is not null or email_v2 is not null) and date_deleted is not null)
+console.log(df2.toSql({ indentation: 2 }))
 ```
+
+Merging filters (using `df1` and `df2` from above):
+
+```typescript
+import { joinDataFilters } from '@samhuk/data-filter'
+df1.addAnd({ field: 'bar', op: Operator.NOT_EQUALS, val: 'b' })
+df1.addOr(df2.value)
+const df3 = joinDataFilters(DataFilterLogic.AND, df1, df2)
+```
+
+Use strings instead of Typescript Enums:
+
+```typescript
+import { createDataFilter } from '@samhuk/data-filter'
+
+const df1 = createDataFilter({
+  field: 'username', op: '=', val: 'bob',
+})
+df1.addAnd({ field: 'id', op: 'between', val: [1, 5] })
+```
+
+See the JSDocs for more information on the available operators and other options.
 
 ## Development
 
