@@ -1,6 +1,6 @@
 {
   "name": "@samhuk/data-filter",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A Javascript data filter package with PostgreSQL support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,7 @@
     "start": "tsc --project ./src/tsconfig.json --watch"
   },
   "author": "",
-  "repository": "https://github.com/samhuk/js-data-filter",
+  "repository": "https://github.com/samhuk/data-filter",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
