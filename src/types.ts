@@ -99,7 +99,7 @@ export type NodeTransformResult = {
 /**
  * Options for converting the filter value to SQL.
  */
-export type ToSqlOptions = {
+export type ToSqlOptions<TUseParameters extends boolean = boolean> = {
   /**
    * Optional transformer for a node. This is useful if each node in the filter, when
    * transformed to SQL, needs to be consistently transformed. For example, if each field
@@ -117,14 +117,37 @@ export type ToSqlOptions = {
    * @default 0 // all inline
    */
   indentation?: number
-}
+  /**
+   * Determines whether filter values are inline, e.g. `'abc'`, `1`, `true`, or represented
+   * as numbered parameters, e.g. `$1`, `$2`.
+   *
+   * If `true`, the result of `toSql()` will be a result object containing information
+   * about the sql and parameters. If `false`, the result will instead be a string - the sql.
+   *
+   * @default true
+   */
+  useParameters?: TUseParameters
+} & (TUseParameters extends true
+  ? {
+    /**
+     * Determines the starting index used for numbered parameters (i.e. `$1`).
+     *
+     * @default 1
+     */
+    parameterStartIndex?: number
+  }
+  : { })
 
 /**
  * ToSqlOptions but with defaults provided.
  */
-export type ResolvedToSqlOptions = ToSqlOptions & {
-  indentation: number
-}
+export type ResolvedToSqlOptions<TUseParameters extends boolean = boolean> =
+  Pick<ToSqlOptions, 'transformer'> & Required<Omit<ToSqlOptions<TUseParameters>, 'transformer'>>
+
+export type ToSqlResult<TUseParameters extends boolean> =
+  TUseParameters extends true
+    ? { sql: string, values: any[] }
+    : string
 
 /**
  * A data filter representing a query, with support to be converted to a PostgreSQL WHERE clause.
@@ -149,7 +172,9 @@ export type DataFilter<TFieldNames extends string = string> = {
   /**
    * Converts the current filter value to a PostgreSQL WHERE clause.
    */
-  toSql: (options?: ToSqlOptions) => string
+  toSql: <TOptions extends ToSqlOptions>(options?: TOptions) => ToSqlResult<
+    TOptions extends { useParameters: boolean } ? TOptions['useParameters'] : true
+  >
   /**
    * Returns the current filter value JSON stringified.
    */

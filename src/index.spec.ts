@@ -42,25 +42,26 @@ describe('createDataFilter', () => {
   })
 
   describe('toSql', () => {
-    test('unhappy paths', () => {
-      const dataFilter = fn(null)
-      expect(dataFilter.toSql()).toBeNull()
-      expect(dataFilter.toJson()).toBe('null')
-    })
+    describe('useParameters = false', () => {
+      test('unhappy paths', () => {
+        const dataFilter = fn(null)
+        expect(dataFilter.toSql({ useParameters: false })).toBeNull()
+        expect(dataFilter.toJson()).toBe('null')
+      })
 
-    test('complex filter', () => {
-      const dataFilter = fn(COMPLEX_FILTER)
+      test('complex filter', () => {
+        const dataFilter = fn(COMPLEX_FILTER)
 
-      const result = dataFilter.toSql()
-      // eslint-disable-next-line quotes
-      expect(result).toBe(`(user.id = 1 and (user.name in ('john', 'joe', 'bob') or user.email like '%email.com') and user.date_deleted is not null)`)
-    })
+        const result = dataFilter.toSql({ useParameters: false })
+        // eslint-disable-next-line quotes
+        expect(result).toBe(`(user.id = 1 and (user.name in ('john', 'joe', 'bob') or user.email like '%email.com') and user.date_deleted is not null)`)
+      })
 
-    test('indentation', () => {
-      const dataFilter = fn(COMPLEX_FILTER)
+      test('indentation', () => {
+        const dataFilter = fn(COMPLEX_FILTER)
 
-      const result = dataFilter.toSql({ indentation: 2 })
-      expect(result).toBe(`(
+        const result = dataFilter.toSql({ indentation: 2, useParameters: false })
+        expect(result).toBe(`(
   user.id = 1
   and (
     user.name in ('john', 'joe', 'bob')
@@ -68,6 +69,38 @@ describe('createDataFilter', () => {
   )
   and user.date_deleted is not null
 )`)
+      })
+    })
+
+    describe('useParameters = true', () => {
+      test('unhappy paths', () => {
+        const dataFilter = fn(null)
+        expect(dataFilter.toSql({ useParameters: true })).toEqual({ sql: null, values: [] })
+        expect(dataFilter.toJson()).toBe('null')
+      })
+
+      test('complex filter', () => {
+        const dataFilter = fn(COMPLEX_FILTER)
+
+        const result = dataFilter.toSql({ useParameters: true })
+        expect(result.sql).toBe('(user.id = $1 and (user.name in ($2, $3, $4) or user.email like $5) and user.date_deleted is not null)')
+        expect(result.values).toEqual([1, 'john', 'joe', 'bob', '%email.com'])
+      })
+
+      test('indentation', () => {
+        const dataFilter = fn(COMPLEX_FILTER)
+
+        const result = dataFilter.toSql({ indentation: 2, useParameters: true })
+        expect(result.sql).toBe(`(
+  user.id = $1
+  and (
+    user.name in ($2, $3, $4)
+    or user.email like $5
+  )
+  and user.date_deleted is not null
+)`)
+        expect(result.values).toEqual([1, 'john', 'joe', 'bob', '%email.com'])
+      })
     })
   })
 
