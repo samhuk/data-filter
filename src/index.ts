@@ -10,6 +10,40 @@ import {
   ResolvedToSqlOptions,
 } from './types'
 
+type ValueStore = {
+  /**
+   * List of values that have been added to the store.
+   */
+  values: any[]
+  /**
+   * Adds a new value to the store.
+   *
+   * @returns The numbered parameter string for the value added, E.g. `$1`, `$2`, etc.
+   */
+  addValue: (newValue: any) => string
+}
+
+type ValueStoreOptions = {
+  /**
+   * @default 1
+   */
+  startIndex?: number
+}
+
+const createValueStore = (options?: ValueStoreOptions): ValueStore => {
+  let i = (options?.startIndex ?? 1) - 1
+
+  let valueStore: ValueStore
+  return valueStore = {
+    values: [],
+    addValue: newValue => {
+      valueStore.values.push(newValue)
+      i += 1
+      return `$${i}`
+    },
+  }
+}
+
 const createBlankString = (length: number): string => {
   let s = ''
   for (let i = 0; i < length; i += 1)
@@ -41,7 +75,7 @@ const inferDataType = (value: any): DataType => {
   return DataType.OTHER
 }
 
-const createNodeOpVal = (node: DataFilterNode): string => {
+const createNodeOpVal = (node: DataFilterNode, useParameters: boolean, valueStore: ValueStore): string => {
   const type = node.dataType ?? inferDataType(node.val)
 
   // Special handling for null value, which means that we must do "is null" or "is not null".
@@ -50,34 +84,49 @@ const createNodeOpVal = (node: DataFilterNode): string => {
 
   const shouldQuoteValue = type === DataType.STRING || type === DataType.EPOCH
 
+  let valStr: string = null
   if (node.op === Operator.BETWEEN) {
-    return shouldQuoteValue
-      // I.e. "between 'a' and 'b'", "between '01-01-2020' and '02-01-2020'"
-      ? `${node.op} ${quoteValue(node.val[0])} and ${quoteValue(node.val[1])}`
-      // I.e. "between 1 and 5"
-      : `${node.op} ${node.val[0]} and ${node.val[1]}`
+    valStr = useParameters
+      // E.g. $1 and $2
+      ? `${valueStore.addValue(node.val[0])} and ${valueStore.addValue(node.val[1])}`
+      : shouldQuoteValue
+        // E.g. 'a' and 'b', between '01-01-2020' and '02-01-2020'
+        ? `${quoteValue(node.val[0])} and ${quoteValue(node.val[1])}`
+        // E.g. between 1 and 5
+        : `${node.val[0]} and ${node.val[1]}`
   }
-  if (node.op === Operator.IN) {
-    return shouldQuoteValue
-      // I.e. "in ('a', 'b', 'c')"
-      ? `${node.op} (${node.val.map(quoteValue).join(', ')})`
-      // I.e. "in (1, 2, 3)"
-      : `${node.op} (${node.val.join(', ')})`
+  else if (node.op === Operator.IN) {
+    valStr = useParameters
+      // E.g. ($1, $2, $3)
+      ? `(${node.val.map(valueStore.addValue).join(', ')})`
+      : shouldQuoteValue
+        // E.g. ('a', 'b', 'c')
+        ? `(${node.val.map(quoteValue).join(', ')})`
+        // E.g. (1, 2, 3)
+        : `(${node.val.join(', ')})`
+  }
+  else {
+    valStr = useParameters
+      // E.g. $1
+      ? valueStore.addValue(node.val)
+      : shouldQuoteValue
+        // E.g. 'a'
+        ? quoteValue(node.val)
+        // E.g. 1
+        : node.val.toString()
   }
 
-  // I.e. ? "'a'", "'01-01-2020'" : "1"
-  const val = shouldQuoteValue ? quoteValue(node.val) : node.val.toString()
-  return `${node.op} ${val}`
+  return `${node.op} ${valStr}`
 }
 
 /**
- * Converts the data filter node to sql, i.e. "user.id between 1 and 5".
+ * Converts the data filter node to sql, E.g. "user.id between 1 and 5".
  */
-const nodeToSql = (node: DataFilterNode, options: ResolvedToSqlOptions, fieldPrefix?: string): string => {
+const nodeToSql = (node: DataFilterNode, options: ResolvedToSqlOptions, valueStore: ValueStore, fieldPrefix?: string): string => {
   const transformerResult = options.transformer?.(node, fieldPrefix)
   const left = transformerResult?.left ?? `${fieldPrefix ?? ''}${node.field}`
 
-  const opVal = createNodeOpVal(node)
+  const opVal = createNodeOpVal(node, options.useParameters, valueStore)
 
   return `${left} ${opVal}`
 }
@@ -93,11 +142,11 @@ const createLogicString = (logic: DataFilterLogic, depth: number, indentation: n
 /**
  * Converts the data filter node group to sql.
  */
-const groupToSql = (nodeGroup: DataFilterNodeGroup, options: ResolvedToSqlOptions, depth: number): string => (
+const groupToSql = (nodeGroup: DataFilterNodeGroup, options: ResolvedToSqlOptions, depth: number, valueStore?: ValueStore): string => (
   nodeGroup != null
     ? `(${createIndentationString(depth, options.indentation)}${nodeGroup.nodes
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      .map(n => nodeOrGroupToSql(n, options, nodeGroup.fieldPrefix, depth))
+      .map(n => nodeOrGroupToSql(n, options, valueStore, nodeGroup.fieldPrefix, depth))
       .join(createLogicString(nodeGroup.logic, depth, options.indentation))}${createIndentationString(depth - 1, options.indentation)})`
     : null
 )
@@ -105,13 +154,14 @@ const groupToSql = (nodeGroup: DataFilterNodeGroup, options: ResolvedToSqlOption
 const nodeOrGroupToSql = (
   nodeOrGroup: DataFilterNodeOrGroup,
   options: ResolvedToSqlOptions,
+  valueStore?: ValueStore,
   fieldPrefix?: string,
   depth: number = 0,
 ): string => (
   nodeOrGroup != null
     ? isNodeGroup(nodeOrGroup)
-      ? groupToSql(nodeOrGroup, options, depth + 1)
-      : nodeToSql(nodeOrGroup, options, fieldPrefix)
+      ? groupToSql(nodeOrGroup, options, depth + 1, valueStore)
+      : nodeToSql(nodeOrGroup, options, valueStore, fieldPrefix)
     : null
 )
 
@@ -130,6 +180,9 @@ const intersection = (...nodeOrGroups: DataFilterNodeOrGroup[]) => join(DataFilt
 const resolveToSqlOptions = (options?: ToSqlOptions): ResolvedToSqlOptions => ({
   transformer: options?.transformer,
   indentation: options?.indentation ?? 0,
+  useParameters: options.useParameters ?? true,
+  // @ts-ignore TODO: Figure out how to do a boolean version of type discriminated union
+  parameterStartIndex: options.useParameters === true ? ((options as ToSqlOptions<true>).parameterStartIndex ?? 1) : null,
 })
 
 const getFieldPrefixOfNodeOrGroup = (nodeOrGroup: DataFilterNodeOrGroup): string | null => (
@@ -145,11 +198,21 @@ export const createDataFilter = <TFieldNames extends string>(
     value: initialFilter ?? null,
     addAnd: newNode => component.value = intersection(component.value, newNode),
     addOr: newNode => component.value = union(component.value, newNode),
-    toSql: _options => nodeOrGroupToSql(
-      component.value,
-      resolveToSqlOptions(_options),
-      getFieldPrefixOfNodeOrGroup(component.value),
-    ),
+    toSql: _options => {
+      const resolvedOptions = resolveToSqlOptions(_options)
+      const valueStore = resolvedOptions.useParameters
+        ? createValueStore({ startIndex: (resolvedOptions as ResolvedToSqlOptions<true>).parameterStartIndex })
+        : null
+      const sql = nodeOrGroupToSql(
+        component.value,
+        resolvedOptions,
+        valueStore,
+        getFieldPrefixOfNodeOrGroup(component.value),
+      )
+      return (resolvedOptions.useParameters
+        ? { sql, values: valueStore.values }
+        : sql) as any
+    },
     toJson: () => JSON.stringify(component.value),
     updateFilter: newFilter => component.value = newFilter,
   }

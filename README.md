@@ -1,12 +1,15 @@
 # data-filter
 
-A package for creating data filters, with conversion to an SQL WHERE clause.
+A package for creating data filters with conversion to an SQL WHERE clause and JSON representation.
+
+data-filter supports both inline values and numbered parameters (as part of a prepared statement).
 
 ## Usage
 
 `npm i @samhuk/data-filter`
 
 Simple, single-node filter
+
 ```typescript
 import { createDataFilter } from '@samhuk/data-filter'
 import { Operator, DataFilterLogic } from '@samhuk/data-filter/types'
@@ -16,7 +19,8 @@ const df1 = createDataFilter({
   op: Operator.EQUALS,
   val: 'bob',
 })
-console.log(df1.toSql()) // (username = 'bob')
+console.log(df1.toSql()) // { sql: (username = $1), values: ['bob'] }
+console.log(df1.toSql({ useParameters: false })) // (username = 'bob')
 ```
 
 Complex, nested filter:
@@ -49,17 +53,6 @@ import { joinDataFilters } from '@samhuk/data-filter'
 df1.addAnd({ field: 'bar', op: Operator.NOT_EQUALS, val: 'b' })
 df1.addOr(df2.value)
 const df3 = joinDataFilters(DataFilterLogic.AND, df1, df2)
-```
-
-Use strings instead of Typescript Enums:
-
-```typescript
-import { createDataFilter } from '@samhuk/data-filter'
-
-const df1 = createDataFilter({
-  field: 'username', op: '=', val: 'bob',
-})
-df1.addAnd({ field: 'id', op: 'between', val: [1, 5] })
 ```
 
 See the JSDocs for more information on the available operators and other options.
