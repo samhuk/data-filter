@@ -87,6 +87,14 @@ describe('createDataFilter', () => {
         expect(result.values).toEqual([1, 'john', 'joe', 'bob', '%email.com'])
       })
 
+      test('complex filter - non-default starting index', () => {
+        const dataFilter = fn(COMPLEX_FILTER)
+
+        const result = dataFilter.toSql({ useParameters: true, parameterStartIndex: 5 })
+        expect(result.sql).toBe('(user.id = $5 and (user.name in ($6, $7, $8) or user.email like $9) and user.date_deleted is not null)')
+        expect(result.values).toEqual([1, 'john', 'joe', 'bob', '%email.com'])
+      })
+
       test('indentation', () => {
         const dataFilter = fn(COMPLEX_FILTER)
 

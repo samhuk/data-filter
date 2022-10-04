@@ -182,7 +182,7 @@ const resolveToSqlOptions = (options?: ToSqlOptions): ResolvedToSqlOptions => ({
   indentation: options?.indentation ?? 0,
   useParameters: options.useParameters ?? true,
   // @ts-ignore TODO: Figure out how to do a boolean version of type discriminated union
-  parametersStartIndex: options.useParameters === true ? ((options as ToSqlOptions<true>).parameterStartIndex ?? 1) : null,
+  parameterStartIndex: options.useParameters === true ? ((options as ToSqlOptions<true>).parameterStartIndex ?? 1) : null,
 })
 
 const getFieldPrefixOfNodeOrGroup = (nodeOrGroup: DataFilterNodeOrGroup): string | null => (
